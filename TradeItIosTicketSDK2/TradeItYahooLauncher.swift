@@ -1,6 +1,13 @@
 import UIKit
 import SafariServices
 
+@objc public protocol YahooLauncherDelegate {
+
+    func yahooLauncherDidSelectLearnMore(
+        fromViewController viewController: UIViewController
+    )
+}
+
 @objc public class TradeItYahooLauncher: NSObject {
     private let yahooViewControllerProvider = TradeItViewControllerProvider(storyboardName: "TradeItYahoo")
     private let tradeItViewControllerProvider = TradeItViewControllerProvider(storyboardName: "TradeIt")
@@ -9,33 +16,36 @@ import SafariServices
     private let oAuthCompletionUIFlow = TradeItYahooOAuthCompletionUIFlow()
     private let linkBrokerUIFlow = TradeItYahooLinkBrokerUIFlow()
     private let alertManager = TradeItAlertManager()
-    
-    override internal init() {
-        TradeItSDK.uiConfigService.isEnabled = false
-    }
-    
+
+    weak var delegate: YahooLauncherDelegate?
+
+    override internal init() {}
+
     @objc public func launchOAuth(fromViewController viewController: UIViewController) {
         self.launchOAuth(
             fromViewController: viewController,
-            oAuthCallbackUrl: TradeItSDK.oAuthCallbackUrl
+            oAuthCallbackUrl: TradeItSDK.oAuthCallbackUrl,
+            delegate: nil
         )
     }
 
     @objc public func launchOAuth(
         fromViewController viewController: UIViewController,
-        oAuthCallbackUrl: URL
-    ) {
+        oAuthCallbackUrl: URL,
+        delegate: YahooLauncherDelegate?
+        ) {
         self.linkBrokerUIFlow.presentLinkBrokerFlow(
             fromViewController: viewController,
             showWelcomeScreen: false,
-            oAuthCallbackUrl: oAuthCallbackUrl
+            oAuthCallbackUrl: oAuthCallbackUrl,
+            delegate: delegate
         )
     }
 
     @objc public func launchRelinking(
         fromViewController viewController: UIViewController,
         forLinkedBroker linkedBroker: TradeItLinkedBroker
-    ) {
+        ) {
         self.launchRelinking(
             fromViewController: viewController,
             forLinkedBroker: linkedBroker,
@@ -47,7 +57,7 @@ import SafariServices
         fromViewController viewController: UIViewController,
         forLinkedBroker linkedBroker: TradeItLinkedBroker,
         oAuthCallbackUrl: URL
-    ) {
+        ) {
         self.linkBrokerUIFlow.presentRelinkBrokerFlow(
             inViewController: viewController,
             linkedBroker: linkedBroker,
@@ -59,7 +69,7 @@ import SafariServices
         onTopmostViewController topMostViewController: UIViewController,
         oAuthCallbackUrl: URL,
         onOAuthCompletionSuccessHandler: OnOAuthCompletionSuccessHandler? = nil
-    ) {
+        ) {
         print("=====> handleOAuthCallback: \(oAuthCallbackUrl.absoluteString)")
 
         let oAuthCallbackUrlParser = TradeItOAuthCallbackUrlParser(oAuthCallbackUrl: oAuthCallbackUrl)
@@ -87,7 +97,7 @@ import SafariServices
                         oAuthCallbackUrlParser: oAuthCallbackUrlParser,
                         onOAuthCompletionSuccessHandler: onOAuthCompletionSuccessHandler
                     )
-                }
+            }
             )
         } else {
             self.oAuthCompletionUIFlow.presentOAuthCompletionFlow(
@@ -102,7 +112,7 @@ import SafariServices
         fromViewController viewController: UIViewController,
         withOrder order: TradeItOrder,
         onViewPortfolioTappedHandler: @escaping OnViewPortfolioTappedHandler
-    ) {
+        ) {
         deviceManager.authenticateUserWithTouchId(
             onSuccess: {
                 print("Access granted")
@@ -111,18 +121,18 @@ import SafariServices
                     withOrder: order,
                     onViewPortfolioTappedHandler: onViewPortfolioTappedHandler
                 )
-            },
+        },
             onFailure: {
                 print("Access denied")
-            }
+        }
         )
     }
-    
+
     @objc public func launchAuthentication(
         forLinkedBroker linkedBroker: TradeItLinkedBroker,
         onViewController viewController: UIViewController,
         onCompletion: @escaping () -> Void
-    ) {
+        ) {
         linkedBroker.authenticate(
             onSuccess: { onCompletion() },
             onSecurityQuestion: { securityQuestion, answerSecurityQuestion, cancelQuestion in
@@ -131,7 +141,7 @@ import SafariServices
                     onViewController: viewController,
                     onAnswerSecurityQuestion: answerSecurityQuestion,
                     onCancelSecurityQuestion: cancelQuestion)
-            },
+        },
             onFailure: { errorResult in
                 self.alertManager.showAlertWithAction(
                     error: errorResult,
@@ -139,16 +149,16 @@ import SafariServices
                     onViewController: viewController,
                     onFinished: {
                         onCompletion()
-                    }
+                }
                 )
-            }
+        }
         )
     }
 
     @objc public func launchOrders(
         fromViewController viewController: UIViewController,
         forLinkedBrokerAccount linkedBrokerAccount: TradeItLinkedBrokerAccount
-    ) {
+        ) {
         deviceManager.authenticateUserWithTouchId(
             onSuccess: {
                 let navController = TradeItYahooNavigationController()
@@ -158,16 +168,16 @@ import SafariServices
                 ordersViewController.linkedBrokerAccount = linkedBrokerAccount
                 navController.pushViewController(ordersViewController, animated: false)
                 viewController.present(navController, animated: true, completion: nil)
-            }, onFailure: {
-                print("TouchId access denied")
-            }
+        }, onFailure: {
+            print("TouchId access denied")
+        }
         )
     }
 
     @objc public func launchTransactions(
         fromViewController viewController: UIViewController,
         forLinkedBrokerAccount linkedBrokerAccount: TradeItLinkedBrokerAccount
-    ) {
+        ) {
         deviceManager.authenticateUserWithTouchId(
             onSuccess: {
                 let navController = TradeItYahooNavigationController()
@@ -177,9 +187,9 @@ import SafariServices
                 transactionsViewController.linkedBrokerAccount = linkedBrokerAccount
                 navController.pushViewController(transactionsViewController, animated: false)
                 viewController.present(navController, animated: true, completion: nil)
-            }, onFailure: {
-                print("TouchId access denied")
-            }
+        }, onFailure: {
+            print("TouchId access denied")
+        }
         )
     }
 }
