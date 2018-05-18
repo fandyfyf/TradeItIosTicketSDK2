@@ -5,7 +5,7 @@ public typealias OnViewPortfolioTappedHandler = ((
     _ linkedBrokerAccount: TradeItLinkedBrokerAccount?
 ) -> Void)
 
-class TradeItYahooTradingUIFlow: NSObject, TradeItYahooTradingTicketViewControllerDelegate, TradeItYahooAccountSelectionViewControllerDelegate,
+class TradeItYahooEquityTradingUIFlow: NSObject, TradeItYahooTradingTicketViewControllerDelegate, TradeItYahooAccountSelectionViewControllerDelegate,
 TradeItYahooTradePreviewViewControllerDelegate {
 
     private let viewControllerProvider: TradeItViewControllerProvider = TradeItViewControllerProvider(storyboardName: "TradeItYahoo")
@@ -90,12 +90,21 @@ TradeItYahooTradePreviewViewControllerDelegate {
     ) {
         let previewViewController = self.viewControllerProvider.provideViewController(forStoryboardId: TradeItStoryboardID.yahooTradingPreviewView) as? TradeItYahooTradePreviewViewController
 
-        if let previewViewController = previewViewController {
+        if let previewViewController = previewViewController,
+            let linkedBrokerAccount = self.order.linkedBrokerAccount {
             previewViewController.delegate = self
-            previewViewController.linkedBrokerAccount = self.order.linkedBrokerAccount
-            previewViewController.previewOrderResult = previewOrderResult
+            previewViewController.linkedBrokerAccount = linkedBrokerAccount
             previewViewController.placeOrderCallback = placeOrderCallback
+            let factory = EquityPreviewCellFactory(
+                previewMessageDelegate: previewViewController,
+                linkedBrokerAccount: linkedBrokerAccount,
+                previewOrderResult: previewOrderResult
+            )
 
+            previewViewController.dataSource = PreviewTableDataSource(
+                delegate: previewViewController,
+                factory: factory
+            )
             tradingTicketViewController.navigationController?.pushViewController(previewViewController, animated: true)
         }
     }

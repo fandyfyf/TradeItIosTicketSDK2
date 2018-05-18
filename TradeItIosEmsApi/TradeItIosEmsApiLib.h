@@ -49,6 +49,9 @@
 #import "TradeItPreviewTradeRequest.h"
 #import "TradeItPreviewTradeOrderDetails.h"
 #import "TradeItPreviewTradeResult.h"
+#import "TradeItCryptoPreviewTradeRequest.h"
+#import "TradeItCryptoPreviewTradeDetails.h"
+#import "TradeItCryptoPreviewTradeResult.h"
 #import "TradeItPreviewMessage.h"
 #import "TradeItPreviewMessageLink.h"
 #import "TradeItPlaceTradeRequest.h"
@@ -66,6 +69,7 @@
 #import "TradeItFxOrderCapabilities.h"
 #import "TradeItFxOrderCapabilitiesResult.h"
 #import "TradeItFxQuoteRequest.h"
+#import "TradeItInstrumentActionCapability.h"
 
 // Use the BalanceService to get account balance information
 #import "TradeItAccountOverviewRequest.h"

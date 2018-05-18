@@ -53,7 +53,7 @@ class TradeItYahooTradingTicketViewController: TradeItYahooViewController, UITab
         self.tableView.delegate = self
         self.tableView.dataSource = self
         self.tableView.tableFooterView = UIView()
-        TicketRow.registerNibCells(forTableView: self.tableView)
+        TradeItBundleProvider.registerYahooNibCells(forTableView: self.tableView)
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -273,7 +273,7 @@ class TradeItYahooTradingTicketViewController: TradeItYahooViewController, UITab
         self.order.linkedBrokerAccount?.linkedBroker?.authenticateIfNeeded(
             onSuccess: {
                 activityView.hide(animated: true)
-                guard let equityOrderCapabilities = (self.order.linkedBrokerAccount?.orderCapabilities.filter { $0.instrument == "equities" })?.first else {
+                guard let instrumentOrderCapabilities = (self.order.linkedBrokerAccount?.orderCapabilities.filter { $0.instrument == "equities" })?.first else {
                     self.alertManager.showAlertWithMessageOnly(
                         onViewController: self,
                         withTitle: "Unsupported Account",
@@ -288,7 +288,7 @@ class TradeItYahooTradingTicketViewController: TradeItYahooViewController, UITab
                     )
                     return
                 }
-                self.equityOrderCapabilities = equityOrderCapabilities
+                self.equityOrderCapabilities = instrumentOrderCapabilities
                 self.setOrderDefaults()
                 self.updateMarketData()
                 self.handleSelectedAccountChange()
@@ -538,14 +538,6 @@ class TradeItYahooTradingTicketViewController: TradeItYahooViewController, UITab
         case marginType
         case estimatedCost
 
-        private enum CellReuseId: String {
-            case readOnly = "TRADING_TICKET_READ_ONLY_CELL_ID"
-            case numericInput = "TRADING_TICKET_NUMERIC_INPUT_CELL_ID"
-            case selection = "TRADING_TICKET_SELECTION_CELL_ID"
-            case selectionDetail = "TRADING_TICKET_SELECTION_DETAIL_CELL_ID"
-            case marketData = "TRADING_TICKET_MARKET_DATA_CELL_ID"
-        }
-
         var cellReuseId: String {
             var cellReuseId: CellReuseId
 
@@ -579,18 +571,9 @@ class TradeItYahooTradingTicketViewController: TradeItYahooViewController, UITab
             case .orderType: return "Order type"
             case .expiration: return "Time in force"
             case .marketPrice: return "Market price"
-            case .account: return "Accounts"
+            case .account: return "Account"
             case .marginType: return "Type"
             }
-        }
-
-        static func registerNibCells(forTableView tableView: UITableView) {
-            let bundle = TradeItBundleProvider.provide()
-
-            tableView.register(
-                UINib(nibName: "TradeItSelectionDetailCellTableViewCell", bundle: bundle),
-                forCellReuseIdentifier: CellReuseId.selectionDetail.rawValue
-            )
         }
     }
 }

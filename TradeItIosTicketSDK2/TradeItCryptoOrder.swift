@@ -1,19 +1,7 @@
-public typealias TradeItPlaceOrderResult = TradeItPlaceTradeResult
-public typealias TradeItPreviewOrderResult = TradeItPreviewTradeResult
-public typealias TradeItPlaceOrderHandlers = (
-    _ onSuccess: @escaping (TradeItPlaceOrderResult) -> Void,
-    _ onSecurityQuestion: @escaping (TradeItSecurityQuestionResult,
-        _ submitAnswer: @escaping (String) -> Void,
-        _ onCancelSecurityQuestion: @escaping () -> Void
-    ) -> Void,
-    _ onFailure: @escaping (TradeItErrorResult) -> Void
-) -> Void
-
-@objc public class TradeItOrder: NSObject {
-    @objc public var linkedBrokerAccount: TradeItLinkedBrokerAccount?
-    @objc public var symbol: String?
-    @objc public var action: TradeItOrderAction = TradeItOrderActionPresenter.DEFAULT
-    @objc public var type: TradeItOrderPriceType = TradeItOrderPriceTypePresenter.DEFAULT {
+@objc public class TradeItCryptoOrder: NSObject {
+    public var linkedBrokerAccount: TradeItLinkedBrokerAccount?
+    public var action: TradeItOrderAction = TradeItOrderActionPresenter.DEFAULT
+    public var type: TradeItOrderPriceType = TradeItOrderPriceTypePresenter.DEFAULT {
         didSet {
             if !requiresExpiration() {
                 expiration = TradeItOrderExpirationPresenter.DEFAULT
@@ -26,24 +14,74 @@ public typealias TradeItPlaceOrderHandlers = (
             }
         }
     }
-    @objc public var expiration: TradeItOrderExpiration = TradeItOrderExpirationPresenter.DEFAULT
-    @objc public var userDisabledMargin = false
-    @objc public var quantity: NSDecimalNumber?
-    @objc public var limitPrice: NSDecimalNumber?
-    @objc public var stopPrice: NSDecimalNumber?
-    @objc public var quoteLastPrice: NSDecimalNumber?
+    public var expiration: TradeItOrderExpiration = TradeItOrderExpirationPresenter.DEFAULT
+    public var userDisabledMargin = false
+    public var quantity: NSDecimalNumber?
+    public var limitPrice: NSDecimalNumber?
+    public var stopPrice: NSDecimalNumber?
+    public var quoteLastPrice: NSDecimalNumber?
+    public var quantityType: OrderQuantityType?
 
-    var tradeService: TradeItEquityTradeService? {
-        return linkedBrokerAccount?.equityTradeService
+    var quantitySymbol: String? {
+        get {
+            switch quantityType {
+            case .some(.baseCurrency): return baseSymbol
+            case .some(.quoteCurrency): return quoteSymbol
+            default: return nil
+            }
+        }
     }
 
-    @objc override public var description: String { return "TradeItOrder: account [\(self.linkedBrokerAccount?.accountName ?? "")/\(self.linkedBrokerAccount?.accountNumber ?? "")], symbol [\(self.symbol ?? "")], action [\(String(describing: self.action.rawValue))], type [\(String(describing:self.type.rawValue))], expiration [\(String(describing: self.expiration.rawValue))], quantity [\(String(describing: self.quantity))], limitPrice [\(String(describing: self.limitPrice))], stopPrice [\(String(describing: self.stopPrice))], quote [\(String(describing: self.quoteLastPrice))], userDisabledMargin [\(String(describing: self.userDisabledMargin))]" }
+    private var _baseSymbol: String?
+    var baseSymbol: String? {
+        get {
+            return _baseSymbol
+        }
+    }
 
-    @objc public override init() {
+    private var _quoteSymbol: String?
+    var quoteSymbol: String? {
+        get {
+            return _quoteSymbol
+        }
+    }
+
+    var _symbol: String?
+    public var symbol: String? {
+        get {
+            return _symbol
+        }
+
+        set(newValue) {
+            guard let symbolPair = newValue?.split(separator: "/"),
+                let baseSymbol = symbolPair.first,
+                let quoteSymbol = symbolPair.last,
+                symbolPair.count == 2
+                else {
+                    clearSymbol()
+                    return
+                }
+            _symbol = newValue
+            _baseSymbol = String(baseSymbol)
+            _quoteSymbol = String(quoteSymbol)
+        }
+    }
+
+    private func clearSymbol() {
+        _symbol = nil
+        _baseSymbol = nil
+        _quoteSymbol = nil
+    }
+
+    override public var description: String {
+        return "TradeItCryptoOrder: account [\(self.linkedBrokerAccount?.accountName ?? "")/\(self.linkedBrokerAccount?.accountNumber ?? "")], symbol [\(self.symbol ?? "")], action [\(String(describing: self.action.rawValue))], type [\(String(describing:self.type.rawValue))], expiration [\(String(describing: self.expiration.rawValue))], quantity [\(String(describing: self.quantity))], limitPrice [\(String(describing: self.limitPrice))], stopPrice [\(String(describing: self.stopPrice))], quote [\(String(describing: self.quoteLastPrice))], userDisabledMargin [\(String(describing: self.userDisabledMargin))]"
+    }
+
+    public override init() {
         super.init()
     }
 
-    @objc public init(
+    public init(
         linkedBrokerAccount: TradeItLinkedBrokerAccount? = nil,
         symbol: String? = nil,
         action: TradeItOrderAction = TradeItOrderActionPresenter.DEFAULT
@@ -58,26 +96,26 @@ public typealias TradeItPlaceOrderHandlers = (
         }
     }
 
-    @objc public func requiresLimitPrice() -> Bool {
+    public func requiresLimitPrice() -> Bool {
         let type = self.type
         return TradeItOrderPriceTypePresenter.LIMIT_TYPES.contains(type)
     }
 
-    @objc public func requiresStopPrice() -> Bool {
+    public func requiresStopPrice() -> Bool {
         let type = self.type
         return TradeItOrderPriceTypePresenter.STOP_TYPES.contains(type)
     }
 
-    @objc public func requiresExpiration() -> Bool {
+    public func requiresExpiration() -> Bool {
         let type = self.type
         return TradeItOrderPriceTypePresenter.EXPIRATION_TYPES.contains(type)
     }
-    
-    @objc public func userCanDisableMargin() -> Bool {
+
+    public func userCanDisableMargin() -> Bool {
         return self.linkedBrokerAccount?.userCanDisableMargin ?? false
     }
 
-    @objc public func estimatedChange() -> NSDecimalNumber? {
+    public func estimatedChange() -> NSDecimalNumber? {
         var optionalPrice: NSDecimalNumber?
         let type = self.type
         switch type {
@@ -94,8 +132,8 @@ public typealias TradeItPlaceOrderHandlers = (
         return price.multiplying(by: quantity)
     }
 
-    @objc public func preview(
-        onSuccess: @escaping (TradeItPreviewTradeResult, @escaping TradeItPlaceOrderHandlers) -> Void,
+    func preview(
+        onSuccess: @escaping (TradeItCryptoPreviewTradeResult, @escaping TradeItPlaceOrderHandlers) -> Void,
         onFailure: @escaping (TradeItErrorResult) -> Void
     ) -> Void {
         guard let linkedBrokerAccount = linkedBrokerAccount else {
@@ -107,7 +145,7 @@ public typealias TradeItPlaceOrderHandlers = (
             )
         }
 
-        guard let previewPresenter = TradeItOrderPreviewPresenter(order: self) else {
+        guard let previewPresenter = TradeItCryptoOrderPreviewPresenter(order: self) else {
             return onFailure(
                 TradeItErrorResult(
                     title: "Preview failed",
@@ -116,7 +154,7 @@ public typealias TradeItPlaceOrderHandlers = (
             )
         }
 
-        self.linkedBrokerAccount?.equityTradeService?.previewTrade(
+        self.linkedBrokerAccount?.cryptoTradeService?.previewTrade(
             previewPresenter.generateRequest(),
             onSuccess: { result in
                 onSuccess(
@@ -125,14 +163,14 @@ public typealias TradeItPlaceOrderHandlers = (
                         previewOrderResult: result
                     )
                 )
-            }, onFailure: { error in
-                linkedBrokerAccount.linkedBroker?.error = error
-                onFailure(error)
-            }
+        }, onFailure: { error in
+            linkedBrokerAccount.linkedBroker?.error = error
+            onFailure(error)
+        }
         )
     }
 
-    @objc public func isValid() -> Bool {
+    public func isValid() -> Bool {
         return validateQuantity()
             && validateOrderPriceType()
             && symbol != nil
@@ -176,7 +214,7 @@ public typealias TradeItPlaceOrderHandlers = (
     }
 
     private func generatePlaceOrderCallback(
-        previewOrderResult: TradeItPreviewOrderResult
+        previewOrderResult: TradeItCryptoPreviewTradeResult
     ) -> TradeItPlaceOrderHandlers {
         return { onSuccess, onSecurityQuestion, onFailure in
             let placeOrderRequest = TradeItPlaceTradeRequest(orderId: previewOrderResult.orderId)
@@ -189,7 +227,7 @@ public typealias TradeItPlaceOrderHandlers = (
                         onSecurityQuestion(
                             securityQuestion,
                             { securityQuestionAnswer in
-                                self.linkedBrokerAccount?.equityTradeService?.answerSecurityQuestionPlaceOrder(securityQuestionAnswer, withCompletionBlock: handler)
+                                self.linkedBrokerAccount?.cryptoTradeService?.answerSecurityQuestionPlaceOrder(securityQuestionAnswer, withCompletionBlock: handler)
                             },
                             {
                                 handler(
@@ -208,7 +246,7 @@ public typealias TradeItPlaceOrderHandlers = (
                     }
                 }
             }
-            self.linkedBrokerAccount?.equityTradeService?.placeTrade(placeOrderRequest, withCompletionBlock: placeResponseHandler)
+            self.linkedBrokerAccount?.cryptoTradeService?.placeTrade(placeOrderRequest, withCompletionBlock: placeResponseHandler)
         }
     }
 }
