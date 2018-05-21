@@ -1,7 +1,7 @@
 import UIKit
 import MBProgressHUD
 
-class TradeItYahooTradingTicketViewController: TradeItYahooViewController, UITableViewDelegate, UITableViewDataSource, TradeItYahooAccountSelectionViewControllerDelegate {
+class TradeItYahooEquityTradingTicketViewController: TradeItYahooViewController, UITableViewDelegate, UITableViewDataSource, TradeItYahooAccountSelectionViewControllerDelegate {
     @IBOutlet weak var tableView: TradeItDismissableKeyboardTableView!
     @IBOutlet weak var previewOrderButton: UIButton!
     @IBOutlet weak var tableViewBottomConstraint: NSLayoutConstraint!
@@ -580,13 +580,13 @@ class TradeItYahooTradingTicketViewController: TradeItYahooViewController, UITab
 
 @objc protocol TradeItYahooTradingTicketViewControllerDelegate {
     func orderSuccessfullyPreviewed(
-        onTradingTicketViewController tradingTicketViewController: TradeItYahooTradingTicketViewController,
+        onTradingTicketViewController tradingTicketViewController: TradeItYahooEquityTradingTicketViewController,
         withPreviewOrderResult previewOrderResult: TradeItPreviewOrderResult,
         placeOrderCallback: @escaping TradeItPlaceOrderHandlers
     )
 
     func invalidAccountSelected(
-        onTradingTicketViewController tradingTicketViewController: TradeItYahooTradingTicketViewController,
+        onTradingTicketViewController tradingTicketViewController: TradeItYahooEquityTradingTicketViewController,
         withOrder order: TradeItOrder
     )
 }
