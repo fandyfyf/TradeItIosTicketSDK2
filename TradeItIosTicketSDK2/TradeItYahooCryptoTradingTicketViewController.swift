@@ -291,7 +291,7 @@ class TradeItYahooCryptoTradingTicketViewController:
                                 onTradingTicketViewController: self,
                                 withOrder: self.order
                             )
-                    }
+                        }
                     )
                     return
                 }
@@ -343,7 +343,7 @@ class TradeItYahooCryptoTradingTicketViewController:
         self.quote = nil
         self.order.quoteLastPrice = nil
         self.reload(row: .marketPrice)
-        self.reload(row: .estimatedCost)
+        self.reload(row: .estimatedChange)
     }
 
     private func updateMarketData() {
@@ -354,11 +354,11 @@ class TradeItYahooCryptoTradingTicketViewController:
                     self.quote = quote
                     self.order.quoteLastPrice = TradeItQuotePresenter.numberToDecimalNumber(quote.lastPrice)
                     self.reload(row: .marketPrice)
-                    self.reload(row: .estimatedCost)
-            },
+                    self.reload(row: .estimatedChange)
+                },
                 onFailure: { error in
                     self.clearMarketData()
-            }
+                }
             )
         } else {
             self.clearMarketData()
@@ -391,7 +391,7 @@ class TradeItYahooCryptoTradingTicketViewController:
             ticketRows.append(.marginType)
         }
 
-        ticketRows.append(.estimatedCost)
+        ticketRows.append(.estimatedChange)
 
         self.ticketRows = ticketRows
 
@@ -414,59 +414,75 @@ class TradeItYahooCryptoTradingTicketViewController:
         cell.textLabel?.text = ticketRow.getTitle(forOrder: self.order)
         cell.selectionStyle = .none
 
+        guard let instrumentOrderCapabilities = self.instrumentOrderCapabilities else { return cell }
+
         switch ticketRow {
         case .orderAction:
-            cell.detailTextLabel?.text = self.instrumentOrderCapabilities?.labelFor(field: .actions, value: self.order.action.rawValue)
+            cell.detailTextLabel?.text = instrumentOrderCapabilities.labelFor(field: .actions, value: self.order.action.rawValue)
         case .quantity:
             let cell = cell as? TradeItNumericToggleInputCell
             let quantitySymbol = self.order.quantitySymbol
             cell?.configure(
                 onValueUpdated: { newValue in
                     self.order.quantity = newValue
-                    self.reload(row: .estimatedCost)
+                    self.reload(row: .estimatedChange)
                     self.setReviewButtonEnablement()
                 },
                 onQuantityTypeToggled: {
-                    let supportedOrderQuantityTypes = self.instrumentOrderCapabilities?.supportedOrderQuantityTypesFor(action: self.order.action)
+                    let supportedOrderQuantityTypes = instrumentOrderCapabilities.supportedOrderQuantityTypesFor(action: self.order.action)
 
-                    guard let supportedOrderQuantityTypeCount = supportedOrderQuantityTypes?.count,
-                        supportedOrderQuantityTypeCount > 0
-                        else { return }
+                    guard supportedOrderQuantityTypes.count > 0 else { return }
 
-                    let currentIndex = supportedOrderQuantityTypes?.index(of: self.order.quantityType ?? supportedOrderQuantityTypes?.first ?? .baseCurrency) as Int? ?? 0
-                    let nextIndex = (currentIndex + 1) % supportedOrderQuantityTypeCount
-                    let nextOrderQuantityType = supportedOrderQuantityTypes?[nextIndex] ?? supportedOrderQuantityTypes?.first ?? .baseCurrency
+                    let currentIndex = supportedOrderQuantityTypes.index(of: self.order.quantityType ?? supportedOrderQuantityTypes.first ?? .baseCurrency) as Int? ?? 0
+                    let nextIndex = (currentIndex + 1) % supportedOrderQuantityTypes.count
+                    let nextOrderQuantityType = supportedOrderQuantityTypes[safe: nextIndex] ?? supportedOrderQuantityTypes.first ?? .baseCurrency
 
                     if self.order.quantityType != nextOrderQuantityType {
                         self.order.quantityType = nextOrderQuantityType
 
                         let quantitySymbol = self.order.quantitySymbol
-                        cell?.configureQuantityType(quantitySymbol: quantitySymbol, quantity: nil)
+                        self.order.quantity = nil
+                        cell?.configureQuantityType(
+                            quantitySymbol: quantitySymbol,
+                            quantity: self.order.quantity,
+                            maxDecimalPlaces: instrumentOrderCapabilities.maxDecimalPlacesFor(orderQuantityType: self.order.quantityType)
+                        )
                     }
                 }
             )
-            cell?.configureQuantityType(quantitySymbol: quantitySymbol, quantity: self.order.quantity)
+            cell?.configureQuantityType(
+                quantitySymbol: quantitySymbol,
+                quantity: self.order.quantity,
+                maxDecimalPlaces: instrumentOrderCapabilities.maxDecimalPlacesFor(orderQuantityType: self.order.quantityType)
+            )
         case .limitPrice:
             let cell = cell as? TradeItNumericToggleInputCell
             cell?.configure(
-                isPrice: true,
                 onValueUpdated: { newValue in
                     self.order.limitPrice = newValue
-                    self.reload(row: .estimatedCost)
+                    self.reload(row: .estimatedChange)
                     self.setReviewButtonEnablement()
                 }
             )
-            cell?.configureQuantityType(quantitySymbol: self.order.quoteSymbol, quantity: self.order.limitPrice)
+            cell?.configureQuantityType(
+                quantitySymbol: self.order.quoteSymbol,
+                quantity: self.order.limitPrice,
+                maxDecimalPlaces: instrumentOrderCapabilities.maxDecimalPlacesFor(orderQuantityType: .quoteCurrency)
+            )
         case .stopPrice:
             let cell = cell as? TradeItNumericToggleInputCell
             cell?.configure(
                 onValueUpdated: { newValue in
                     self.order.stopPrice = newValue
-                    self.reload(row: .estimatedCost)
+                    self.reload(row: .estimatedChange)
                     self.setReviewButtonEnablement()
                 }
             )
-            cell?.configureQuantityType(quantitySymbol: self.order.quoteSymbol, quantity: self.order.stopPrice)
+            cell?.configureQuantityType(
+                quantitySymbol: self.order.quoteSymbol,
+                quantity: self.order.stopPrice,
+                maxDecimalPlaces: instrumentOrderCapabilities.maxDecimalPlacesFor(orderQuantityType: .quoteCurrency)
+            )
         case .marketPrice:
             guard let marketCell = cell as? TradeItSubtitleWithDetailsCellTableViewCell else { return cell }
             let quotePresenter = TradeItQuotePresenter(self.order.linkedBrokerAccount?.accountBaseCurrency)
@@ -481,21 +497,18 @@ class TradeItYahooCryptoTradingTicketViewController:
             )
         case .marginType:
             cell.detailTextLabel?.text = MarginPresenter.labelFor(value: self.order.userDisabledMargin)
-        case .estimatedCost:
-            var estimateChangeText = "N/A"
+        case .estimatedChange:
+            var estimatedChangeText = "N/A"
 
             if let estimatedChange = order.estimatedChange() {
-                estimateChangeText = NumberFormatter.formatCurrency(
-                    estimatedChange,
-                    currencyCode: order.linkedBrokerAccount?.accountBaseCurrency
-                )
+                estimatedChangeText = NumberFormatter.formatQuantity(estimatedChange)
             }
 
-            cell.detailTextLabel?.text = estimateChangeText
+            cell.detailTextLabel?.text = estimatedChangeText
         case .orderType:
-            cell.detailTextLabel?.text = self.instrumentOrderCapabilities?.labelFor(field: .priceTypes, value: self.order.type.rawValue)
+            cell.detailTextLabel?.text = instrumentOrderCapabilities.labelFor(field: .priceTypes, value: self.order.type.rawValue)
         case .expiration:
-            cell.detailTextLabel?.text = self.instrumentOrderCapabilities?.labelFor(field: .expirationTypes, value: self.order.expiration.rawValue)
+            cell.detailTextLabel?.text = instrumentOrderCapabilities.labelFor(field: .expirationTypes, value: self.order.expiration.rawValue)
         case .account:
             guard let detailCell = cell as? TradeItSelectionDetailCellTableViewCell else { return cell }
             detailCell.textLabel?.isHidden = true
@@ -563,7 +576,7 @@ class TradeItYahooCryptoTradingTicketViewController:
         case stopPrice
         case marketPrice
         case marginType
-        case estimatedCost
+        case estimatedChange
 
         var cellReuseId: String {
             var cellReuseId: CellReuseId
@@ -571,7 +584,7 @@ class TradeItYahooCryptoTradingTicketViewController:
             switch self {
             case .orderAction, .orderType, .expiration, .marginType:
                 cellReuseId = .selection
-            case .estimatedCost:
+            case .estimatedChange:
                 cellReuseId = .readOnly
             case .quantity, .limitPrice, .stopPrice:
                 cellReuseId = .numericToggleInput
@@ -587,11 +600,7 @@ class TradeItYahooCryptoTradingTicketViewController:
         func getTitle(forOrder order: TradeItCryptoOrder) -> String {
             switch self {
             case .orderAction: return "Action"
-            case .estimatedCost:
-                let sellActions: [TradeItOrderAction] = [.sell, .sellShort]
-                let action = order.action
-                let title = "Estimated \(sellActions.contains(action) ? "Proceeds" : "Cost")"
-                return title
+            case .estimatedChange: return "Estimated \(order.quantitySymbol ?? "")"
             case .quantity: return "Amount"
             case .limitPrice: return "Limit"
             case .stopPrice: return "Stop"
