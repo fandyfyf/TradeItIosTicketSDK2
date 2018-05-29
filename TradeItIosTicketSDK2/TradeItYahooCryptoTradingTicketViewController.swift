@@ -326,7 +326,10 @@ class TradeItYahooCryptoTradingTicketViewController:
         self.order.action = TradeItOrderAction(value: self.instrumentOrderCapabilities?.defaultValueFor(field: .actions, value: self.order.action.rawValue))
         self.order.type = TradeItOrderPriceType(value: self.instrumentOrderCapabilities?.defaultValueFor(field: .priceTypes, value: self.order.type.rawValue))
         self.order.expiration = TradeItOrderExpiration(value: self.instrumentOrderCapabilities?.defaultValueFor(field: .expirationTypes, value: self.order.expiration.rawValue))
-        self.order.quantityType = self.instrumentOrderCapabilities?.supportedOrderQuantityTypesFor(action: self.order.action).first
+        self.order.quantityType = self.instrumentOrderCapabilities?.supportedOrderQuantityTypes(
+            forAction: self.order.action,
+            priceType: self.order.type
+        ).first
         self.order.userDisabledMargin = false
     }
 
@@ -429,9 +432,12 @@ class TradeItYahooCryptoTradingTicketViewController:
                     self.setReviewButtonEnablement()
                 },
                 onQuantityTypeToggled: {
-                    let supportedOrderQuantityTypes = instrumentOrderCapabilities.supportedOrderQuantityTypesFor(action: self.order.action)
+                    let supportedOrderQuantityTypes = instrumentOrderCapabilities.supportedOrderQuantityTypes(
+                        forAction: self.order.action,
+                        priceType: self.order.type
+                    )
 
-                    guard supportedOrderQuantityTypes.count > 0 else { return }
+                    if supportedOrderQuantityTypes.isEmpty { return }
 
                     let currentIndex = supportedOrderQuantityTypes.index(of: self.order.quantityType ?? supportedOrderQuantityTypes.first ?? .baseCurrency) as Int? ?? 0
                     let nextIndex = (currentIndex + 1) % supportedOrderQuantityTypes.count
@@ -445,15 +451,21 @@ class TradeItYahooCryptoTradingTicketViewController:
                         cell?.configureQuantityType(
                             quantitySymbol: quantitySymbol,
                             quantity: self.order.quantity,
-                            maxDecimalPlaces: instrumentOrderCapabilities.maxDecimalPlacesFor(orderQuantityType: self.order.quantityType)
+                            maxDecimalPlaces: instrumentOrderCapabilities.maxDecimalPlacesFor(orderQuantityType: self.order.quantityType),
+                            showToggle: supportedOrderQuantityTypes.count > 1
                         )
                     }
                 }
             )
+            let supportedOrderQuantityTypes = instrumentOrderCapabilities.supportedOrderQuantityTypes(
+                forAction: self.order.action,
+                priceType: self.order.type
+            )
             cell?.configureQuantityType(
                 quantitySymbol: quantitySymbol,
                 quantity: self.order.quantity,
-                maxDecimalPlaces: instrumentOrderCapabilities.maxDecimalPlacesFor(orderQuantityType: self.order.quantityType)
+                maxDecimalPlaces: instrumentOrderCapabilities.maxDecimalPlacesFor(orderQuantityType: self.order.quantityType),
+                showToggle: supportedOrderQuantityTypes.count > 1
             )
         case .limitPrice:
             let cell = cell as? TradeItNumericToggleInputCell
@@ -532,7 +544,7 @@ class TradeItYahooCryptoTradingTicketViewController:
 
     private func buyingPowerText() -> String? {
         guard let buyingPower = self.order.linkedBrokerAccount?.balance?.buyingPower else { return nil }
-        let buyingPowerLabel = self.order.linkedBrokerAccount?.balance?.buyingPowerLabel?.capitalized ?? "Buying Power"
+        let buyingPowerLabel = self.order.linkedBrokerAccount?.balance?.buyingPowerLabel?.capitalized ?? "Buying power"
         let buyingPowerValue = NumberFormatter.formatCurrency(buyingPower, currencyCode: self.order.linkedBrokerAccount?.accountBaseCurrency)
         return buyingPowerLabel + ": " + buyingPowerValue
     }

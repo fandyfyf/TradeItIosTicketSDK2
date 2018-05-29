@@ -127,7 +127,7 @@
         <!--Trade-->
         <scene sceneID="bNf-Ke-cbe">
             <objects>
-                <viewController storyboardIdentifier="TRADE_IT_YAHOO_TRADING_TICKET_VIEW" title="Trade" id="jK8-b4-d6g" userLabel="Trade" customClass="TradeItYahooTradingTicketViewController" customModule="TradeItIosTicketSDK2" customModuleProvider="target" sceneMemberID="viewController">
+                <viewController storyboardIdentifier="TRADE_IT_YAHOO_TRADING_TICKET_VIEW" title="Trade" id="jK8-b4-d6g" userLabel="Trade" customClass="TradeItYahooEquityTradingTicketViewController" customModule="TradeItIosTicketSDK2" customModuleProvider="target" sceneMemberID="viewController">
                     <layoutGuides>
                         <viewControllerLayoutGuide type="top" id="bqV-LO-12F"/>
                         <viewControllerLayoutGuide type="bottom" id="Hv7-Wc-HXU"/>
@@ -143,7 +143,7 @@
                                     <constraint firstAttribute="height" constant="50" id="sP4-ow-QGs"/>
                                 </constraints>
                                 <fontDescription key="fontDescription" type="system" weight="medium" pointSize="17"/>
-                                <state key="normal" title="Review order">
+                                <state key="normal" title="Preview order">
                                     <color key="titleColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
                                 </state>
                                 <userDefinedRuntimeAttributes>
@@ -642,7 +642,7 @@
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="wtx-NC-ihz" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="1014" y="946"/>
+            <point key="canvasLocation" x="1014" y="1016"/>
         </scene>
     </scenes>
 </document>

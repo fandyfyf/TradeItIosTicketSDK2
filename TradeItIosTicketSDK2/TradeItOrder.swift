@@ -29,6 +29,7 @@ public typealias TradeItPlaceOrderHandlers = (
     @objc public var expiration: TradeItOrderExpiration = TradeItOrderExpirationPresenter.DEFAULT
     @objc public var userDisabledMargin = false
     @objc public var quantity: NSDecimalNumber?
+    internal var quantityType: OrderQuantityType = .shares // Set to internal to get this out - will make enum obj-c compatible later
     @objc public var limitPrice: NSDecimalNumber?
     @objc public var stopPrice: NSDecimalNumber?
     @objc public var quoteLastPrice: NSDecimalNumber?
@@ -59,17 +60,14 @@ public typealias TradeItPlaceOrderHandlers = (
     }
 
     @objc public func requiresLimitPrice() -> Bool {
-        let type = self.type
         return TradeItOrderPriceTypePresenter.LIMIT_TYPES.contains(type)
     }
 
     @objc public func requiresStopPrice() -> Bool {
-        let type = self.type
         return TradeItOrderPriceTypePresenter.STOP_TYPES.contains(type)
     }
 
     @objc public func requiresExpiration() -> Bool {
-        let type = self.type
         return TradeItOrderPriceTypePresenter.EXPIRATION_TYPES.contains(type)
     }
     
@@ -79,8 +77,8 @@ public typealias TradeItPlaceOrderHandlers = (
 
     @objc public func estimatedChange() -> NSDecimalNumber? {
         var optionalPrice: NSDecimalNumber?
-        let type = self.type
-        switch type {
+
+        switch self.type {
         case .market: optionalPrice = quoteLastPrice
         case .limit: optionalPrice = limitPrice
         case .stopLimit: optionalPrice = limitPrice
@@ -88,10 +86,18 @@ public typealias TradeItPlaceOrderHandlers = (
         case .unknown: optionalPrice = 0.0
         }
 
-        guard let quantity = quantity , quantity != NSDecimalNumber.notANumber else { return nil }
-        guard let price = optionalPrice , price != NSDecimalNumber.notANumber else { return nil }
+        guard let quantity = quantity, quantity != NSDecimalNumber.notANumber
+            else { return nil }
 
-        return price.multiplying(by: quantity)
+        switch quantityType {
+        case .quoteCurrency, .totalPrice: return quantity
+        case .baseCurrency, .shares:
+            if let price = optionalPrice, price != NSDecimalNumber.notANumber {
+                return price.multiplying(by: quantity)
+            } else {
+                return nil
+            }
+        }
     }
 
     @objc public func preview(
